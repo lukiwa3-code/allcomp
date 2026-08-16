@@ -9,8 +9,13 @@
     .reduce((max, match) => Math.max(max, Number(match[1].replace(/\s/g, "")) || 0), 0);
 
   function parsePrice(value) {
-    const match = normalize(value).replace(/zł/gi, "").match(/(?:^|\s)(\d{1,3}(?:[ .]\d{3})*|\d+)[,.](\d{2})(?:\s|$)/);
-    return match ? Number(`${match[1].replace(/[ .]/g, "")}.${match[2]}`) : null;
+    const text = normalize(value);
+    let match = text.match(/(\d{1,3}(?:[ .]\d{3})*|\d+)\s*[,.]\s*(\d{2})\s*zł/i);
+    if (match) return Number(`${match[1].replace(/[ .]/g, "")}.${match[2]}`);
+    match = text.match(/(\d{1,3}(?:[ .]\d{3})*|\d+)\s+(\d{2})\s*zł/i);
+    if (match) return Number(`${match[1].replace(/[ .]/g, "")}.${match[2]}`);
+    match = text.match(/(\d{1,3}(?:[ .]\d{3})*|\d+)\s*zł/i);
+    return match ? Number(match[1].replace(/[ .]/g, "")) : null;
   }
 
   function findProductWithMostOffers() {
@@ -112,4 +117,6 @@
   if (sessionStorage.getItem("lap_stage") === "product") results.textContent = "Szukam produktu z największą liczbą ofert…";
   setTimeout(runStage, 1500);
   setTimeout(runStage, 4000);
+  setTimeout(runStage, 8000);
+  setTimeout(runStage, 12000);
 })();

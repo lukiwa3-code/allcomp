@@ -62,7 +62,9 @@ public class MainActivity extends Activity {
                 } else if (stage == Stage.READ_OFFERS) {
                     status.setText("Sortuję oferty produktu od najtańszej…");
                     handler.postDelayed(MainActivity.this::extractOffers, 1800);
-                    handler.postDelayed(MainActivity.this::extractOffers, 4500);
+                    handler.postDelayed(MainActivity.this::scrollAndExtractOffers, 4500);
+                    handler.postDelayed(MainActivity.this::scrollAndExtractOffers, 8000);
+                    handler.postDelayed(MainActivity.this::scrollAndExtractOffers, 12000);
                 }
             }
         });
@@ -97,9 +99,10 @@ public class MainActivity extends Activity {
     }
 
     private void extractOffers() {
+        if (stage != Stage.READ_OFFERS) return;
         String js = "javascript:(()=>{" +
             "const n=s=>(s||'').replace(/\\s+/g,' ').trim();" +
-            "const price=s=>{const m=n(s).replace(/zł/gi,'').match(/(?:^|\\s)(\\d{1,3}(?:[ .]\\d{3})*|\\d+)[,.](\\d{2})(?:\\s|$)/);return m?Number(m[1].replace(/[ .]/g,'')+'.'+m[2]):null};" +
+            "const price=s=>{s=n(s);let m=s.match(/(\\d{1,3}(?:[ .]\\d{3})*|\\d+)\\s*[,.]\\s*(\\d{2})\\s*zł/i);if(m)return Number(m[1].replace(/[ .]/g,'')+'.'+m[2]);m=s.match(/(\\d{1,3}(?:[ .]\\d{3})*|\\d+)\\s+(\\d{2})\\s*zł/i);if(m)return Number(m[1].replace(/[ .]/g,'')+'.'+m[2]);m=s.match(/(\\d{1,3}(?:[ .]\\d{3})*|\\d+)\\s*zł/i);return m?Number(m[1].replace(/[ .]/g,'')):null};" +
             "const seen=new Set(),out=[];" +
             "document.querySelectorAll('a[href*=\"/oferta/\"]').forEach(a=>{" +
             "let href=a.href.split('?')[0];if(seen.has(href))return;" +
@@ -108,6 +111,12 @@ public class MainActivity extends Activity {
             "if(p==null||t.length<4)return;seen.add(href);out.push({title:t,price:p,url:href})});" +
             "out.sort((a,b)=>a.price-b.price);AndroidOffers.onOffers(JSON.stringify(out.slice(0,2)));})()";
         webView.evaluateJavascript(js, null);
+    }
+
+    private void scrollAndExtractOffers() {
+        if (stage != Stage.READ_OFFERS) return;
+        webView.evaluateJavascript("javascript:window.scrollTo(0, Math.min(document.body.scrollHeight, window.scrollY + window.innerHeight * 2))", null);
+        handler.postDelayed(this::extractOffers, 700);
     }
 
     private class OfferBridge {
