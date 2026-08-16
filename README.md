@@ -17,6 +17,9 @@ aplikacja przegląda w tym celu kolejne strony ofert produktu.
 Zapisane numery są wyświetlane jako przełączniki — można zaznaczyć kilka pozycji
 i usunąć je jednocześnie. Parser promocji pomija historyczną „cenę z 30 dni” i
 porównuje aktualną cenę sprzedaży.
+Zaznaczone numery są czerwone, a odznaczone jasnoszare. Cena własna jest
+sprawdzana dodatkowo na stronie ofert sprzedawcy `lukiwa`, z kontrolą zgodności
+identyfikatora produktu.
 Pomiędzy rozpoczęciem sprawdzania kolejnych numerów obowiązuje stała przerwa
 10 sekund, która ogranicza częstotliwość zapytań.
 

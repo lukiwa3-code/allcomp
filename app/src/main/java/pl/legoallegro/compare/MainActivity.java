@@ -2,6 +2,7 @@ package pl.legoallegro.compare;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
@@ -29,7 +30,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class MainActivity extends Activity {
-    private enum Stage { IDLE, FIND_PRODUCT, READ_OFFERS }
+    private enum Stage { IDLE, FIND_PRODUCT, READ_OFFERS, READ_OWN_PRICE }
     private static final String SETS_FILE = "sets.txt";
     private static final String OWN_SELLER = "lukiwa";
     private static final long SET_DELAY_MS = 10_000L;
@@ -48,7 +49,8 @@ public class MainActivity extends Activity {
     private int queueIndex = 0, currentPage = 1, maxPage = 1;
     private int extractionAttempts = 0;
     private int productAttempts = 0;
-    private String currentNumber = "", productOffersUrl = "";
+    private int ownPriceAttempts = 0;
+    private String currentNumber = "", productOffersUrl = "", expectedProductPath = "";
     private Double firstPrice, secondPrice, ownPrice;
 
     @SuppressLint({"SetJavaScriptEnabled", "JavascriptInterface"})
@@ -80,6 +82,10 @@ public class MainActivity extends Activity {
                     status.setText("Zestaw " + currentNumber + ": sprawdzam oferty, strona " + currentPage + "/" + maxPage + "…");
                     handler.postDelayed(() -> extractOffers(expectedPage), 1800);
                     handler.postDelayed(() -> scrollAndExtractOffers(expectedPage), 4500);
+                } else if (stage == Stage.READ_OWN_PRICE) {
+                    status.setText("Zestaw " + currentNumber + ": sprawdzam cenę sprzedawcy " + OWN_SELLER + "…");
+                    handler.postDelayed(MainActivity.this::extractOwnPrice, 1800);
+                    handler.postDelayed(MainActivity.this::extractOwnPrice, 4500);
                 }
             }
         });
@@ -160,6 +166,14 @@ public class MainActivity extends Activity {
             button.setTextOff(number);
             button.setText(number);
             button.setChecked(selectedSets.contains(number));
+            button.setBackgroundTintList(new ColorStateList(
+                new int[][] { new int[] { android.R.attr.state_checked }, new int[] {} },
+                new int[] { Color.rgb(215, 25, 32), Color.rgb(232, 232, 232) }
+            ));
+            button.setTextColor(new ColorStateList(
+                new int[][] { new int[] { android.R.attr.state_checked }, new int[] {} },
+                new int[] { Color.WHITE, Color.BLACK }
+            ));
             button.setOnCheckedChangeListener((view, checked) -> {
                 if (checked) selectedSets.add(number); else selectedSets.remove(number);
             });
@@ -202,7 +216,9 @@ public class MainActivity extends Activity {
         maxPage = 1;
         extractionAttempts = 0;
         productAttempts = 0;
+        ownPriceAttempts = 0;
         productOffersUrl = "";
+        expectedProductPath = "";
         firstPrice = secondPrice = ownPrice = null;
         stage = Stage.FIND_PRODUCT;
         status.setText("Zestaw " + currentNumber + ": wyszukuję…");
@@ -239,6 +255,24 @@ public class MainActivity extends Activity {
         handler.postDelayed(() -> extractOffers(expectedPage), 700);
     }
 
+    private void startOwnPriceLookup() {
+        stage = Stage.READ_OWN_PRICE;
+        ownPriceAttempts = 0;
+        webView.loadUrl("https://allegro.pl/uzytkownik/" + OWN_SELLER + "?string=" + Uri.encode(currentNumber) + "&order=p");
+    }
+
+    private void extractOwnPrice() {
+        if (stage != Stage.READ_OWN_PRICE) return;
+        String quotedPath = JSONObject.quote(expectedProductPath);
+        String js = "javascript:(()=>{" +
+            "const n=s=>(s||'').replace(/\\s+/g,' ').trim();" +
+            "const price=s=>{s=n(s);let marker=s.toLowerCase().indexOf('cena z 30 dni');if(marker>=0)s=s.slice(marker+13);let m=s.match(/(\\d{1,3}(?:[ .]\\d{3})*|\\d+)\\s*[,.]\\s*(\\d{2})\\s*zł/i);if(m)return Number(m[1].replace(/[ .]/g,'')+'.'+m[2]);m=s.match(/(\\d{1,3}(?:[ .]\\d{3})*|\\d+)\\s*zł/i);return m?Number(m[1].replace(/[ .]/g,'')):null};" +
+            "let own=null,matches=0,expected=" + quotedPath + ";const seen=new Set();" +
+            "document.querySelectorAll('a[href*=\\\"offerId=\\\"]').forEach(a=>{if(new URL(a.href).pathname!==expected||seen.has(a.href))return;let c=a.closest('article');if(!c)return;let p=price(c.textContent);if(p==null)return;seen.add(a.href);matches++;if(own==null||p<own)own=p});" +
+            "AndroidOffers.onOwnPrice(JSON.stringify({price:own,matches:matches}));})()";
+        webView.evaluateJavascript(js, null);
+    }
+
     private class OfferBridge {
         @JavascriptInterface public void onProduct(String json) {
             runOnUiThread(() -> {
@@ -258,6 +292,7 @@ public class MainActivity extends Activity {
                     }
                     productAttempts = 0;
                     productOffersUrl = Uri.parse(url).buildUpon().appendQueryParameter("stan", "nowe").appendQueryParameter("order", "p").build().toString();
+                    expectedProductPath = Uri.parse(url).getPath().replace("/oferty-produktu/", "/produkt/");
                     stage = Stage.READ_OFFERS;
                     webView.loadUrl(productOffersUrl);
                 } catch (Exception e) { finishCurrentWithError("błąd wyboru produktu"); }
@@ -279,8 +314,7 @@ public class MainActivity extends Activity {
                     }
                     if (!result.isNull("ownPrice")) ownPrice = result.getDouble("ownPrice");
                     boolean pageNotReady = prices.length() == 0 ||
-                        (currentPage == 1 && (firstPrice == null || secondPrice == null)) ||
-                        ownPrice == null;
+                        (currentPage == 1 && (firstPrice == null || secondPrice == null));
                     if (pageNotReady && extractionAttempts < 4) {
                         extractionAttempts++;
                         final int retryPage = currentPage;
@@ -289,14 +323,32 @@ public class MainActivity extends Activity {
                         return;
                     }
                     extractionAttempts = 0;
-                    if (ownPrice == null && currentPage < maxPage) {
-                        currentPage++;
-                        extractionAttempts = 0;
-                        webView.loadUrl(Uri.parse(productOffersUrl).buildUpon().appendQueryParameter("p", String.valueOf(currentPage)).build().toString());
+                    if (firstPrice != null && secondPrice != null) {
+                        if (ownPrice != null) finishCurrentResult(); else startOwnPriceLookup();
+                    } else {
+                        finishCurrentWithError("mniej niż dwie rozpoznane ceny");
+                    }
+                } catch (Exception e) { finishCurrentWithError("nie udało się odczytać cen"); }
+            });
+        }
+
+
+        @JavascriptInterface public void onOwnPrice(String json) {
+            runOnUiThread(() -> {
+                if (stage != Stage.READ_OWN_PRICE) return;
+                try {
+                    JSONObject result = new JSONObject(json);
+                    if (!result.isNull("price")) {
+                        ownPrice = result.getDouble("price");
+                        finishCurrentResult();
+                    } else if (ownPriceAttempts < 4) {
+                        ownPriceAttempts++;
+                        status.setText("Zestaw " + currentNumber + ": czekam na ofertę " + OWN_SELLER + ", próba " + (ownPriceAttempts + 1) + "/5…");
+                        handler.postDelayed(MainActivity.this::extractOwnPrice, 1800);
                     } else {
                         finishCurrentResult();
                     }
-                } catch (Exception e) { finishCurrentWithError("nie udało się odczytać cen"); }
+                } catch (Exception e) { finishCurrentResult(); }
             });
         }
     }
