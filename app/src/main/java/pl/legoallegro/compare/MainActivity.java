@@ -264,11 +264,13 @@ public class MainActivity extends Activity {
     private void extractOwnPrice() {
         if (stage != Stage.READ_OWN_PRICE) return;
         String quotedPath = JSONObject.quote(expectedProductPath);
+        String quotedNumber = JSONObject.quote(currentNumber);
         String js = "javascript:(()=>{" +
             "const n=s=>(s||'').replace(/\\s+/g,' ').trim();" +
             "const price=s=>{s=n(s);let marker=s.toLowerCase().indexOf('cena z 30 dni');if(marker>=0)s=s.slice(marker+13);let m=s.match(/(\\d{1,3}(?:[ .]\\d{3})*|\\d+)\\s*[,.]\\s*(\\d{2})\\s*zł/i);if(m)return Number(m[1].replace(/[ .]/g,'')+'.'+m[2]);m=s.match(/(\\d{1,3}(?:[ .]\\d{3})*|\\d+)\\s*zł/i);return m?Number(m[1].replace(/[ .]/g,'')):null};" +
-            "let own=null,matches=0,expected=" + quotedPath + ";const seen=new Set();" +
+            "let own=null,matches=0,expected=" + quotedPath + ",number=" + quotedNumber + ";const seen=new Set();" +
             "document.querySelectorAll('a[href*=\\\"offerId=\\\"]').forEach(a=>{if(new URL(a.href).pathname!==expected||seen.has(a.href))return;let c=a.closest('article');if(!c)return;let p=price(c.textContent);if(p==null)return;seen.add(a.href);matches++;if(own==null||p<own)own=p});" +
+            "if(own==null)document.querySelectorAll('article').forEach(c=>{let text=n(c.textContent),exact=new RegExp('(^|\\\\D)'+number+'(\\\\D|$)').test(text);if(!exact)return;let p=price(text);if(p==null)return;matches++;if(own==null||p<own)own=p});" +
             "AndroidOffers.onOwnPrice(JSON.stringify({price:own,matches:matches}));})()";
         webView.evaluateJavascript(js, null);
     }
