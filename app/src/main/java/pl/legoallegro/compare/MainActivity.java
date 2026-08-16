@@ -47,6 +47,7 @@ public class MainActivity extends Activity {
     private Stage stage = Stage.IDLE;
     private int queueIndex = 0, currentPage = 1, maxPage = 1;
     private int extractionAttempts = 0;
+    private int productAttempts = 0;
     private String currentNumber = "", productOffersUrl = "";
     private Double firstPrice, secondPrice, ownPrice;
 
@@ -200,6 +201,7 @@ public class MainActivity extends Activity {
         currentPage = 1;
         maxPage = 1;
         extractionAttempts = 0;
+        productAttempts = 0;
         productOffersUrl = "";
         firstPrice = secondPrice = ownPrice = null;
         stage = Stage.FIND_PRODUCT;
@@ -244,7 +246,17 @@ public class MainActivity extends Activity {
                 try {
                     JSONObject product = new JSONObject(json);
                     String url = product.optString("url");
-                    if (url.isEmpty()) { finishCurrentWithError("brak karty produktu"); return; }
+                    if (url.isEmpty()) {
+                        if (productAttempts < 4) {
+                            productAttempts++;
+                            status.setText("Zestaw " + currentNumber + ": czekam na karty produktów, próba " + (productAttempts + 1) + "/5…");
+                            handler.postDelayed(MainActivity.this::findLargestProduct, 1800);
+                        } else {
+                            finishCurrentWithError("brak karty produktu po 5 próbach");
+                        }
+                        return;
+                    }
+                    productAttempts = 0;
                     productOffersUrl = Uri.parse(url).buildUpon().appendQueryParameter("stan", "nowe").appendQueryParameter("order", "p").build().toString();
                     stage = Stage.READ_OFFERS;
                     webView.loadUrl(productOffersUrl);
