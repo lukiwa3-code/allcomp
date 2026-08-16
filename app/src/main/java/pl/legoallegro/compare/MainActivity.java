@@ -25,12 +25,14 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class MainActivity extends Activity {
+    private enum Stage { IDLE, FIND_PRODUCT, READ_OFFERS }
     private WebView webView;
     private EditText setNumber;
     private TextView status, firstOffer, secondOffer, difference;
     private LinearLayout results;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final NumberFormat currency = NumberFormat.getCurrencyInstance(new Locale("pl", "PL"));
+    private Stage stage = Stage.IDLE;
 
     @SuppressLint({"SetJavaScriptEnabled", "JavascriptInterface"})
     @Override public void onCreate(Bundle state) {
@@ -53,9 +55,15 @@ public class MainActivity extends Activity {
         webView.setWebChromeClient(new WebChromeClient());
         webView.setWebViewClient(new WebViewClient() {
             @Override public void onPageFinished(WebView view, String url) {
-                status.setText("Analizuję widoczne oferty…");
-                handler.postDelayed(MainActivity.this::extractOffers, 1800);
-                handler.postDelayed(MainActivity.this::extractOffers, 4500);
+                if (stage == Stage.FIND_PRODUCT) {
+                    status.setText("Wybieram produkt z największą liczbą ofert…");
+                    handler.postDelayed(MainActivity.this::findLargestProduct, 1800);
+                    handler.postDelayed(MainActivity.this::findLargestProduct, 4500);
+                } else if (stage == Stage.READ_OFFERS) {
+                    status.setText("Sortuję oferty produktu od najtańszej…");
+                    handler.postDelayed(MainActivity.this::extractOffers, 1800);
+                    handler.postDelayed(MainActivity.this::extractOffers, 4500);
+                }
             }
         });
         search.setOnClickListener(v -> search());
@@ -71,8 +79,23 @@ public class MainActivity extends Activity {
         }
         results.setVisibility(View.GONE);
         status.setText("Szukam nowych zestawów LEGO " + number + "…");
+        stage = Stage.FIND_PRODUCT;
         String query = Uri.encode("LEGO " + number);
-        webView.loadUrl("https://allegro.pl/listing?string=" + query + "&stan=nowe&order=p");
+        webView.loadUrl("https://allegro.pl/listing?string=" + query + "&stan=nowe");
+    }
+
+    private void findLargestProduct() {
+        if (stage != Stage.FIND_PRODUCT) return;
+        String js = "javascript:(()=>{" +
+            "const n=s=>(s||'').replace(/\\s+/g,' ').trim();" +
+            "const count=s=>[...n(s).matchAll(/(\\d[\\d\\s]*)\\s+ofert(?:a|y)?\\b/gi)].reduce((m,x)=>Math.max(m,Number(x[1].replace(/\\s/g,''))||0),0);" +
+            "const out=[],seen=new Set();" +
+            "document.querySelectorAll('article,[data-role=product],[data-box-name*=product]').forEach(c=>{" +
+            "let k=count(c.innerText),a=c.querySelector('a[href*=\\\"/produkt/\\\"],a[href*=\\\"product.id\\\"],a[href*=\\\"productId\\\"]');" +
+            "if(!k||!a||seen.has(a.href))return;seen.add(a.href);let h=c.querySelector('h2,h3,[role=heading]');out.push({url:a.href,count:k,title:n(h?.textContent||a.textContent)})});" +
+            "document.querySelectorAll('a').forEach(a=>{let k=count(a.innerText);if(!k||!/\\/produkt\\/|product\\.id|productId/i.test(a.href)||seen.has(a.href))return;out.push({url:a.href,count:k,title:n(a.textContent)})});" +
+            "out.sort((a,b)=>b.count-a.count);if(out[0])AndroidOffers.onProduct(JSON.stringify(out[0]));else AndroidOffers.onProduct('{}');})()";
+        webView.evaluateJavascript(js, null);
     }
 
     private void extractOffers() {
@@ -90,6 +113,29 @@ public class MainActivity extends Activity {
     }
 
     private class OfferBridge {
+        @JavascriptInterface public void onProduct(String json) {
+            runOnUiThread(() -> {
+                if (stage != Stage.FIND_PRODUCT) return;
+                try {
+                    JSONObject product = new JSONObject(json);
+                    String url = product.optString("url");
+                    if (url.isEmpty()) {
+                        status.setText("Nie znalazłem karty produktu z liczbą ofert. Poczekaj na pełne wczytanie wyników.");
+                        return;
+                    }
+                    status.setText("Wybrano produkt z " + product.getInt("count") + " ofertami. Otwieram listę…");
+                    stage = Stage.READ_OFFERS;
+                    Uri sorted = Uri.parse(url).buildUpon()
+                        .appendQueryParameter("stan", "nowe")
+                        .appendQueryParameter("order", "p")
+                        .build();
+                    webView.loadUrl(sorted.toString());
+                } catch (Exception e) {
+                    status.setText("Nie udało się wybrać produktu z największą liczbą ofert.");
+                }
+            });
+        }
+
         @JavascriptInterface public void onOffers(String json) {
             runOnUiThread(() -> {
                 try {
@@ -103,7 +149,8 @@ public class MainActivity extends Activity {
                     bindOffer(secondOffer, "DRUGA NAJTAŃSZA", second);
                     difference.setText("Różnica: " + currency.format(second.getDouble("price") - first.getDouble("price")) + "\nCeny bez dostawy.");
                     results.setVisibility(View.VISIBLE);
-                    status.setText("Znaleziono dwie najtańsze widoczne oferty.");
+                    stage = Stage.IDLE;
+                    status.setText("Dwie najtańsze oferty produktu z największą liczbą ofert.");
                 } catch (Exception e) { status.setText("Nie udało się odczytać ofert. Allegro mogło zmienić stronę."); }
             });
         }

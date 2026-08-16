@@ -10,7 +10,7 @@ Wtyczka działa lokalnie w Chrome i Edge, bez Allegro API i bez przekazywania da
 4. Wskaż cały folder `lego-allegro-porownywarka`.
 5. Wejdź na stronę wyników wyszukiwania Allegro.
 
-Panel pojawi się po prawej stronie. Wpisz numer zestawu LEGO, np. `76476`. Wtyczka otworzy wyniki ograniczone do nowych produktów, posortuje widoczne oferty i pokaże dwie najtańsze.
+Panel pojawi się po prawej stronie. Wpisz numer zestawu LEGO, np. `76476`. Wtyczka wyszuka nowe produkty, wybierze kartę z największą liczbą ofert, otworzy listę ofert tego produktu i pokaże dwie najtańsze ceny.
 
 ## Ważne
 

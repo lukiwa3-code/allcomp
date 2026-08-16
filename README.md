@@ -5,9 +5,10 @@ Repozytorium zawiera dwa warianty narzędzia działającego bez Allegro API:
 - aplikację Android w katalogu `app`,
 - rozszerzenie Chrome/Edge w katalogu `browser-extension`.
 
-Oba warianty wyszukują nowe zestawy LEGO i zestawiają najtańszą oraz drugą
-najtańszą widoczną ofertę. Cena nie obejmuje dostawy ani indywidualnych korzyści
-Allegro Smart!.
+Oba warianty wyszukują nowe zestawy LEGO, wybierają kartę produktu z największą
+liczbą ofert, przechodzą do ofert dokładnie tego produktu, a następnie zwracają
+najtańszą i drugą najtańszą cenę. Cena nie obejmuje dostawy ani indywidualnych
+korzyści Allegro Smart!.
 
 ## Android APK
 
