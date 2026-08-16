@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -16,6 +17,8 @@ import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.GridLayout;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
@@ -25,31 +28,55 @@ import java.io.OutputStreamWriter;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 public class MainActivity extends Activity {
-    private enum Stage { IDLE, FIND_PRODUCT, READ_OFFERS, READ_OWN_PRICE }
+    private enum Stage { IDLE, LOAD_LEGO_DEALS, FIND_PRODUCT, READ_OFFERS, READ_OWN_PRICE }
+    private enum Mode { SAVED_SETS, LEGO_DEALS }
+
+    private static class DealProduct {
+        final String number;
+        final String title;
+        final double legoPrice;
+
+        DealProduct(String number, String title, double legoPrice) {
+            this.number = number;
+            this.title = title;
+            this.legoPrice = legoPrice;
+        }
+    }
+
     private static final String SETS_FILE = "sets.txt";
     private static final String OWN_SELLER = "lukiwa";
+    private static final String LEGO_DEALS_URL = "https://www.lego.com/pl-pl/categories/sales-and-deals";
     private static final long SET_DELAY_MS = 10_000L;
 
     private WebView webView;
     private EditText setNumber;
-    private TextView status, batchResults;
+    private TextView status, batchResults, dealsStatus;
     private GridLayout setButtons;
-    private Button addButton, removeButton, checkAllButton;
+    private LinearLayout dealsResults;
+    private ScrollView savedTabContent, dealsTabContent;
+    private Button addButton, removeButton, checkAllButton, refreshDealsButton;
+    private Button savedTabButton, dealsTabButton;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final NumberFormat currency = NumberFormat.getCurrencyInstance(new Locale("pl", "PL"));
     private final ArrayList<String> savedSets = new ArrayList<>();
     private final HashSet<String> selectedSets = new HashSet<>();
+    private final LinkedHashMap<String, DealProduct> legoDeals = new LinkedHashMap<>();
     private ArrayList<String> batchQueue = new ArrayList<>();
     private Stage stage = Stage.IDLE;
+    private Mode mode = Mode.SAVED_SETS;
     private int queueIndex = 0, currentPage = 1, maxPage = 1;
     private int extractionAttempts = 0;
     private int productAttempts = 0;
     private int ownPriceAttempts = 0;
+    private int legoCatalogPage = 0;
+    private int legoCatalogAttempts = 0;
+    private boolean legoPageAdvancePending = false;
     private String currentNumber = "", productOffersUrl = "", expectedProductPath = "";
     private Double firstPrice, secondPrice, ownPrice;
 
@@ -62,9 +89,16 @@ public class MainActivity extends Activity {
         setButtons = findViewById(R.id.setButtons);
         status = findViewById(R.id.status);
         batchResults = findViewById(R.id.batchResults);
+        dealsStatus = findViewById(R.id.dealsStatus);
+        dealsResults = findViewById(R.id.dealsResults);
+        savedTabContent = findViewById(R.id.savedTabContent);
+        dealsTabContent = findViewById(R.id.dealsTabContent);
         addButton = findViewById(R.id.addButton);
         removeButton = findViewById(R.id.removeButton);
         checkAllButton = findViewById(R.id.checkAllButton);
+        refreshDealsButton = findViewById(R.id.refreshDealsButton);
+        savedTabButton = findViewById(R.id.savedTabButton);
+        dealsTabButton = findViewById(R.id.dealsTabButton);
 
         webView.setBackgroundColor(Color.WHITE);
         webView.getSettings().setJavaScriptEnabled(true);
@@ -73,17 +107,21 @@ public class MainActivity extends Activity {
         webView.setWebChromeClient(new WebChromeClient());
         webView.setWebViewClient(new WebViewClient() {
             @Override public void onPageFinished(WebView view, String url) {
-                if (stage == Stage.FIND_PRODUCT) {
-                    status.setText("Zestaw " + currentNumber + ": wybieram produkt z największą liczbą ofert…");
+                if (stage == Stage.LOAD_LEGO_DEALS) {
+                    setProgressStatus("Pobieram produkty promocyjne z LEGO.com…");
+                    handler.postDelayed(MainActivity.this::extractLegoDeals, 2200);
+                    handler.postDelayed(MainActivity.this::extractLegoDeals, 5200);
+                } else if (stage == Stage.FIND_PRODUCT) {
+                    setProgressStatus("Zestaw " + currentNumber + ": wybieram produkt z największą liczbą ofert…");
                     handler.postDelayed(MainActivity.this::findLargestProduct, 1800);
                     handler.postDelayed(MainActivity.this::findLargestProduct, 4500);
                 } else if (stage == Stage.READ_OFFERS) {
                     final int expectedPage = currentPage;
-                    status.setText("Zestaw " + currentNumber + ": sprawdzam oferty, strona " + currentPage + "/" + maxPage + "…");
+                    setProgressStatus("Zestaw " + currentNumber + ": sprawdzam oferty, strona " + currentPage + "/" + maxPage + "…");
                     handler.postDelayed(() -> extractOffers(expectedPage), 1800);
                     handler.postDelayed(() -> scrollAndExtractOffers(expectedPage), 4500);
                 } else if (stage == Stage.READ_OWN_PRICE) {
-                    status.setText("Zestaw " + currentNumber + ": sprawdzam cenę sprzedawcy " + OWN_SELLER + "…");
+                    setProgressStatus("Zestaw " + currentNumber + ": sprawdzam cenę sprzedawcy " + OWN_SELLER + "…");
                     handler.postDelayed(MainActivity.this::extractOwnPrice, 1800);
                     handler.postDelayed(MainActivity.this::extractOwnPrice, 4500);
                 }
@@ -93,9 +131,24 @@ public class MainActivity extends Activity {
         addButton.setOnClickListener(v -> addSet());
         removeButton.setOnClickListener(v -> removeSet());
         checkAllButton.setOnClickListener(v -> checkAll());
+        refreshDealsButton.setOnClickListener(v -> startDealsComparison());
+        savedTabButton.setOnClickListener(v -> showTab(false));
+        dealsTabButton.setOnClickListener(v -> showTab(true));
         loadSets();
         renderSavedSets();
+        showTab(false);
         webView.loadUrl("https://allegro.pl/");
+    }
+
+    private void showTab(boolean deals) {
+        savedTabContent.setVisibility(deals ? View.GONE : View.VISIBLE);
+        dealsTabContent.setVisibility(deals ? View.VISIBLE : View.GONE);
+        int red = Color.rgb(215, 25, 32);
+        int gray = Color.rgb(232, 232, 232);
+        savedTabButton.setBackgroundTintList(ColorStateList.valueOf(deals ? gray : red));
+        savedTabButton.setTextColor(deals ? Color.BLACK : Color.WHITE);
+        dealsTabButton.setBackgroundTintList(ColorStateList.valueOf(deals ? red : gray));
+        dealsTabButton.setTextColor(deals ? Color.WHITE : Color.BLACK);
     }
 
     private String enteredNumber() {
@@ -191,6 +244,7 @@ public class MainActivity extends Activity {
             Toast.makeText(this, "Najpierw dodaj co najmniej jeden numer", Toast.LENGTH_SHORT).show();
             return;
         }
+        mode = Mode.SAVED_SETS;
         batchQueue = new ArrayList<>(savedSets);
         queueIndex = 0;
         batchResults.setText("");
@@ -198,16 +252,88 @@ public class MainActivity extends Activity {
         startNextSet();
     }
 
+    private void startDealsComparison() {
+        if (stage != Stage.IDLE) return;
+        mode = Mode.LEGO_DEALS;
+        showTab(true);
+        legoDeals.clear();
+        dealsResults.removeAllViews();
+        legoCatalogPage = 0;
+        legoCatalogAttempts = 0;
+        legoPageAdvancePending = false;
+        setControlsEnabled(false);
+        stage = Stage.LOAD_LEGO_DEALS;
+        setProgressStatus("Ładuję aktualne promocje LEGO.com…");
+        webView.loadUrl(LEGO_DEALS_URL);
+    }
+
     private void setControlsEnabled(boolean enabled) {
         addButton.setEnabled(enabled);
         removeButton.setEnabled(enabled);
         checkAllButton.setEnabled(enabled);
+        refreshDealsButton.setEnabled(enabled);
+    }
+
+    private void setProgressStatus(String value) {
+        if (mode == Mode.LEGO_DEALS) dealsStatus.setText(value); else status.setText(value);
+    }
+
+    private void extractLegoDeals() {
+        if (stage != Stage.LOAD_LEGO_DEALS || legoPageAdvancePending) return;
+        String js = "javascript:(()=>{" +
+            "const gate=document.querySelector('button[data-test=\\\"age-gate-grown-up-cta\\\"]');if(gate){gate.click();AndroidOffers.onLegoDeals(JSON.stringify({waiting:true}));return;}" +
+            "const cookies=document.querySelector('button[data-test=\\\"cookie-necessary-button\\\"]');if(cookies){cookies.click();AndroidOffers.onLegoDeals(JSON.stringify({waiting:true}));return;}" +
+            "const n=s=>(s||'').replace(/\\s+/g,' ').trim();" +
+            "const price=s=>{let m=n(s).match(/(\\d{1,3}(?:[ .]\\d{3})*|\\d+)\\s*[,.]\\s*(\\d{2})\\s*zł/i);return m?Number(m[1].replace(/[ .]/g,'')+'.'+m[2]):null};" +
+            "let page=1,total=1;document.querySelectorAll('button').forEach(b=>{let t=n(b.textContent),a=b.getAttribute('aria-label')||'';if(/^\\d+$/.test(t)&&b.getAttribute('aria-disabled')==='true')page=Number(t);let m=a.match(/of\\s+(\\d+)/i);if(m)total=Math.max(total,Number(m[1]))});" +
+            "const products=[];document.querySelectorAll('article[data-test=\\\"product-leaf\\\"]').forEach(c=>{let number=c.getAttribute('data-test-key')||'',title=n(c.querySelector('[data-test=\\\"product-leaf-title\\\"]')?.textContent),node=c.querySelector('[data-test=\\\"product-leaf-discounted-price\\\"]')||c.querySelector('[data-test=\\\"product-leaf-price\\\"]'),p=price(node?.textContent);if(/^\\d{3,8}$/.test(number)&&title&&p!=null)products.push({number:number,title:title,price:p})});" +
+            "AndroidOffers.onLegoDeals(JSON.stringify({page:page,total:total,products:products}));})()";
+        webView.evaluateJavascript(js, null);
+    }
+
+    private void goToNextLegoPage() {
+        if (stage != Stage.LOAD_LEGO_DEALS) return;
+        legoPageAdvancePending = true;
+        String js = "(()=>{const buttons=[...document.querySelectorAll('button[data-test=\\\"pagination-next\\\"]')].filter(b=>b.getAttribute('aria-disabled')!=='true');const b=buttons.find(x=>x.offsetParent!==null)||buttons[0];if(!b)return false;b.click();return true})()";
+        webView.evaluateJavascript(js, value -> {
+            if (!"true".equals(value)) {
+                legoPageAdvancePending = false;
+                finishLegoCatalogWithError("nie udało się przejść do kolejnej strony LEGO");
+                return;
+            }
+            handler.postDelayed(() -> {
+                legoPageAdvancePending = false;
+                extractLegoDeals();
+            }, 3500);
+        });
+    }
+
+    private void beginDealsQueue() {
+        if (legoDeals.isEmpty()) {
+            finishLegoCatalogWithError("nie znaleziono produktów promocyjnych");
+            return;
+        }
+        batchQueue = new ArrayList<>(legoDeals.keySet());
+        queueIndex = 0;
+        setProgressStatus("Pobrano " + legoDeals.size() + " produktów. Zaczynam porównanie z Allegro…");
+        startNextSet();
+    }
+
+    private void finishLegoCatalogWithError(String error) {
+        if (stage != Stage.LOAD_LEGO_DEALS) return;
+        stage = Stage.IDLE;
+        dealsStatus.setText("Błąd: " + error);
+        setControlsEnabled(true);
     }
 
     private void startNextSet() {
         if (queueIndex >= batchQueue.size()) {
             stage = Stage.IDLE;
-            status.setText("Gotowe — sprawdzono " + batchQueue.size() + " zestawów.");
+            if (mode == Mode.LEGO_DEALS) {
+                dealsStatus.setText("Gotowe — porównano " + batchQueue.size() + " produktów z promocji LEGO.");
+            } else {
+                status.setText("Gotowe — sprawdzono " + batchQueue.size() + " zestawów.");
+            }
             setControlsEnabled(true);
             return;
         }
@@ -221,7 +347,11 @@ public class MainActivity extends Activity {
         expectedProductPath = "";
         firstPrice = secondPrice = ownPrice = null;
         stage = Stage.FIND_PRODUCT;
-        status.setText("Zestaw " + currentNumber + ": wyszukuję…");
+        if (mode == Mode.LEGO_DEALS) {
+            setProgressStatus("Produkt " + (queueIndex + 1) + "/" + batchQueue.size() + " — " + currentNumber + ": wyszukuję na Allegro…");
+        } else {
+            setProgressStatus("Zestaw " + currentNumber + ": wyszukuję…");
+        }
         webView.loadUrl("https://allegro.pl/listing?string=" + Uri.encode("LEGO " + currentNumber) + "&stan=nowe");
     }
 
@@ -276,6 +406,50 @@ public class MainActivity extends Activity {
     }
 
     private class OfferBridge {
+        @JavascriptInterface public void onLegoDeals(String json) {
+            runOnUiThread(() -> {
+                if (stage != Stage.LOAD_LEGO_DEALS) return;
+                try {
+                    JSONObject result = new JSONObject(json);
+                    if (result.optBoolean("waiting")) {
+                        handler.postDelayed(MainActivity.this::extractLegoDeals, 1600);
+                        return;
+                    }
+                    int page = result.optInt("page", 1);
+                    int total = Math.max(page, result.optInt("total", page));
+                    JSONArray products = result.optJSONArray("products");
+                    if (products == null || products.length() == 0) {
+                        if (legoCatalogAttempts++ < 4) {
+                            setProgressStatus("Czekam na produkty LEGO, próba " + (legoCatalogAttempts + 1) + "/5…");
+                            handler.postDelayed(MainActivity.this::extractLegoDeals, 1800);
+                        } else {
+                            finishLegoCatalogWithError("nie udało się odczytać listy produktów");
+                        }
+                        return;
+                    }
+                    if (page <= legoCatalogPage) {
+                        if (page < total && !legoPageAdvancePending) goToNextLegoPage();
+                        return;
+                    }
+                    legoCatalogAttempts = 0;
+                    for (int i = 0; i < products.length(); i++) {
+                        JSONObject product = products.getJSONObject(i);
+                        String number = product.optString("number");
+                        String title = product.optString("title");
+                        double price = product.optDouble("price", -1);
+                        if (number.matches("\\d{3,8}") && !title.isEmpty() && price >= 0) {
+                            legoDeals.put(number, new DealProduct(number, title, price));
+                        }
+                    }
+                    legoCatalogPage = page;
+                    setProgressStatus("Pobrano stronę " + page + "/" + total + " — razem " + legoDeals.size() + " produktów.");
+                    if (page < total) goToNextLegoPage(); else beginDealsQueue();
+                } catch (Exception e) {
+                    finishLegoCatalogWithError("nie udało się przetworzyć listy LEGO");
+                }
+            });
+        }
+
         @JavascriptInterface public void onProduct(String json) {
             runOnUiThread(() -> {
                 if (stage != Stage.FIND_PRODUCT) return;
@@ -285,7 +459,7 @@ public class MainActivity extends Activity {
                     if (url.isEmpty()) {
                         if (productAttempts < 4) {
                             productAttempts++;
-                            status.setText("Zestaw " + currentNumber + ": czekam na karty produktów, próba " + (productAttempts + 1) + "/5…");
+                            setProgressStatus("Zestaw " + currentNumber + ": czekam na karty produktów, próba " + (productAttempts + 1) + "/5…");
                             handler.postDelayed(MainActivity.this::findLargestProduct, 1800);
                         } else {
                             finishCurrentWithError("brak karty produktu po 5 próbach");
@@ -310,22 +484,27 @@ public class MainActivity extends Activity {
                     if (resultPage != currentPage) return;
                     maxPage = Math.max(maxPage, result.optInt("maxPage", 1));
                     JSONArray prices = result.getJSONArray("prices");
-                    if (currentPage == 1 && prices.length() >= 2) {
+                    if (currentPage == 1 && prices.length() >= 1) {
                         firstPrice = prices.getJSONObject(0).getDouble("price");
+                    }
+                    if (mode == Mode.SAVED_SETS && currentPage == 1 && prices.length() >= 2) {
                         secondPrice = prices.getJSONObject(1).getDouble("price");
                     }
                     if (!result.isNull("ownPrice")) ownPrice = result.getDouble("ownPrice");
-                    boolean pageNotReady = prices.length() == 0 ||
-                        (currentPage == 1 && (firstPrice == null || secondPrice == null));
+                    boolean pageNotReady = mode == Mode.LEGO_DEALS
+                        ? firstPrice == null
+                        : firstPrice == null || secondPrice == null;
                     if (pageNotReady && extractionAttempts < 4) {
                         extractionAttempts++;
                         final int retryPage = currentPage;
-                        status.setText("Zestaw " + currentNumber + ": czekam na oferty, próba " + (extractionAttempts + 1) + "/5…");
+                        setProgressStatus("Zestaw " + currentNumber + ": czekam na oferty, próba " + (extractionAttempts + 1) + "/5…");
                         handler.postDelayed(() -> scrollAndExtractOffers(retryPage), 1800);
                         return;
                     }
                     extractionAttempts = 0;
-                    if (firstPrice != null && secondPrice != null) {
+                    if (mode == Mode.LEGO_DEALS) {
+                        if (firstPrice != null) finishCurrentResult(); else finishCurrentWithError("brak rozpoznanej ceny nowego zestawu");
+                    } else if (firstPrice != null && secondPrice != null) {
                         if (ownPrice != null) finishCurrentResult(); else startOwnPriceLookup();
                     } else {
                         finishCurrentWithError("mniej niż dwie rozpoznane ceny");
@@ -333,7 +512,6 @@ public class MainActivity extends Activity {
                 } catch (Exception e) { finishCurrentWithError("nie udało się odczytać cen"); }
             });
         }
-
 
         @JavascriptInterface public void onOwnPrice(String json) {
             runOnUiThread(() -> {
@@ -345,7 +523,7 @@ public class MainActivity extends Activity {
                         finishCurrentResult();
                     } else if (ownPriceAttempts < 4) {
                         ownPriceAttempts++;
-                        status.setText("Zestaw " + currentNumber + ": czekam na ofertę " + OWN_SELLER + ", próba " + (ownPriceAttempts + 1) + "/5…");
+                        setProgressStatus("Zestaw " + currentNumber + ": czekam na ofertę " + OWN_SELLER + ", próba " + (ownPriceAttempts + 1) + "/5…");
                         handler.postDelayed(MainActivity.this::extractOwnPrice, 1800);
                     } else {
                         finishCurrentResult();
@@ -356,6 +534,12 @@ public class MainActivity extends Activity {
     }
 
     private void finishCurrentResult() {
+        if (mode == Mode.LEGO_DEALS) {
+            if (firstPrice == null) { finishCurrentWithError("brak rozpoznanej ceny nowego zestawu"); return; }
+            appendDealResult(legoDeals.get(currentNumber), firstPrice, null);
+            advanceQueue();
+            return;
+        }
         if (firstPrice == null || secondPrice == null) { finishCurrentWithError("mniej niż dwie rozpoznane ceny"); return; }
         String mine = ownPrice == null ? "brak oferty" : currency.format(ownPrice);
         appendResult(currentNumber + "\nNajtańsza: " + currency.format(firstPrice) + "\nDruga: " + currency.format(secondPrice) + "\nMoja cena (" + OWN_SELLER + "): " + mine);
@@ -363,7 +547,11 @@ public class MainActivity extends Activity {
     }
 
     private void finishCurrentWithError(String error) {
-        appendResult(currentNumber + "\nBłąd: " + error);
+        if (mode == Mode.LEGO_DEALS) {
+            appendDealResult(legoDeals.get(currentNumber), null, error);
+        } else {
+            appendResult(currentNumber + "\nBłąd: " + error);
+        }
         advanceQueue();
     }
 
@@ -372,11 +560,36 @@ public class MainActivity extends Activity {
         batchResults.append(value);
     }
 
+    private void appendDealResult(DealProduct deal, Double allegroPrice, String error) {
+        if (deal == null) return;
+        TextView row = new TextView(this);
+        String allegro = allegroPrice == null ? "brak ceny" : currency.format(allegroPrice);
+        String value = deal.number + " · " + deal.title + "\nLEGO: " + currency.format(deal.legoPrice) + "     Allegro (nowy): " + allegro;
+        if (error != null) value += "\nBłąd: " + error;
+        row.setText(value);
+        row.setTextColor(Color.rgb(22, 22, 22));
+        row.setTextSize(16);
+        row.setLineSpacing(0, 1.08f);
+        row.setPadding(dp(14), dp(12), dp(14), dp(12));
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(Color.WHITE);
+        background.setStroke(dp(1), Color.rgb(210, 210, 210));
+        background.setCornerRadius(dp(9));
+        row.setBackground(background);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        params.setMargins(0, 0, 0, dp(9));
+        dealsResults.addView(row, params);
+    }
+
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
     private void advanceQueue() {
         stage = Stage.IDLE;
         queueIndex++;
         if (queueIndex < batchQueue.size()) {
-            status.setText("Następny zestaw za 10 sekund…");
+            setProgressStatus((mode == Mode.LEGO_DEALS ? "Następny produkt" : "Następny zestaw") + " za 10 sekund…");
             handler.postDelayed(this::startNextSet, SET_DELAY_MS);
         } else {
             startNextSet();

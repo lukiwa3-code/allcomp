@@ -23,6 +23,12 @@ identyfikatora produktu.
 Pomiędzy rozpoczęciem sprawdzania kolejnych numerów obowiązuje stała przerwa
 10 sekund, która ogranicza częstotliwość zapytań.
 
+Druga zakładka **Promocje LEGO** pobiera wszystkie strony aktualnej kategorii
+„Oferty i wyprzedaż” z polskiego LEGO.com. Dla każdego widocznego tam produktu
+odczytuje numer i aktualną cenę promocyjną, a następnie pokazuje ją obok
+najtańszej rozpoznanej ceny nowej oferty na Allegro. Również w tym trybie
+sprawdzanie kolejnych produktów rozpoczyna się co 10 sekund.
+
 ## Android APK
 
 Workflow `.github/workflows/android.yml` buduje testowe APK automatycznie po
