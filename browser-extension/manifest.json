@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "LEGO Allegro — 2 najtańsze",
+  "version": "1.0.0",
+  "description": "Porównuje dwie najtańsze nowe oferty zestawu LEGO na Allegro.",
+  "content_scripts": [
+    {
+      "matches": ["https://allegro.pl/listing*", "https://allegro.pl/kategoria/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

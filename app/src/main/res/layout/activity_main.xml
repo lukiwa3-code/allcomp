@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="@color/paper">
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:padding="18dp" android:background="@color/lego_yellow">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="LEGO · 2 NAJTAŃSZE" android:textColor="@color/ink"
+            android:textStyle="bold" android:textSize="22sp" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="10dp" android:orientation="horizontal">
+            <EditText android:id="@+id/setNumber" android:layout_width="0dp" android:layout_height="52dp"
+                android:layout_weight="1" android:background="#FFFFFFFF" android:hint="Numer, np. 76476"
+                android:inputType="number" android:maxLength="8" android:paddingHorizontal="14dp" />
+            <Button android:id="@+id/searchButton" android:layout_width="wrap_content" android:layout_height="52dp"
+                android:layout_marginStart="8dp" android:text="Szukaj" android:textColor="#FFFFFF"
+                android:backgroundTint="@color/lego_red" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView android:id="@+id/status" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:padding="12dp" android:text="Wpisz numer zestawu LEGO." android:textColor="@color/ink" />
+
+    <LinearLayout android:id="@+id/results" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:paddingHorizontal="14dp" android:visibility="gone">
+        <TextView android:id="@+id/firstOffer" style="@style/OfferCard" />
+        <TextView android:id="@+id/secondOffer" style="@style/OfferCard" />
+        <TextView android:id="@+id/difference" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:padding="12dp" android:textStyle="bold" android:textSize="17sp" />
+    </LinearLayout>
+
+    <WebView android:id="@+id/webView" android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" />
+</LinearLayout>

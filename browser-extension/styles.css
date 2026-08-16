@@ -1,0 +1,17 @@
+#lap-panel { position: fixed; right: 18px; top: 90px; z-index: 2147483647; width: 340px; box-sizing: border-box; padding: 18px; border-radius: 14px; background: #fff; color: #171717; box-shadow: 0 8px 32px rgba(0,0,0,.24); font: 14px/1.4 Arial,sans-serif; }
+#lap-panel * { box-sizing: border-box; }
+#lap-panel h2 { margin: 0 28px 14px 0; font-size: 19px; }
+#lap-search { display: flex; gap: 8px; }
+#lap-search input { min-width: 0; flex: 1; border: 1px solid #aaa; border-radius: 7px; padding: 9px; }
+#lap-panel button { border: 0; border-radius: 7px; padding: 9px 12px; background: #ff5a00; color: #fff; cursor: pointer; font-weight: 700; }
+#lap-collapse { position: absolute; right: 10px; top: 10px; width: 30px; padding: 4px !important; }
+#lap-results { margin: 14px 0; }
+.lap-offer { padding: 10px 0; border-top: 1px solid #eee; }
+.lap-offer a { display: block; margin: 3px 0; color: #1769aa; text-decoration: none; }
+.lap-offer strong { font-size: 18px; }
+.lap-label { color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.lap-difference { margin-top: 8px; padding: 10px; border-radius: 7px; background: #f2f7ed; }
+#lap-refresh { width: 100%; background: #333 !important; }
+#lap-panel.lap-collapsed { width: 54px; height: 48px; overflow: hidden; padding: 0; }
+#lap-panel.lap-collapsed #lap-collapse { right: 12px; }
+@media (max-width: 600px) { #lap-panel { right: 8px; top: 70px; width: calc(100vw - 16px); } }
