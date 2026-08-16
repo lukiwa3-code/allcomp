@@ -29,6 +29,7 @@ public class MainActivity extends Activity {
     private enum Stage { IDLE, FIND_PRODUCT, READ_OFFERS }
     private static final String SETS_FILE = "sets.txt";
     private static final String OWN_SELLER = "lukiwa";
+    private static final long SET_DELAY_MS = 10_000L;
 
     private WebView webView;
     private EditText setNumber;
@@ -261,7 +262,12 @@ public class MainActivity extends Activity {
     private void advanceQueue() {
         stage = Stage.IDLE;
         queueIndex++;
-        handler.postDelayed(this::startNextSet, 500);
+        if (queueIndex < batchQueue.size()) {
+            status.setText("Następny zestaw za 10 sekund…");
+            handler.postDelayed(this::startNextSet, SET_DELAY_MS);
+        } else {
+            startNextSet();
+        }
     }
 
     @Override public void onBackPressed() {
