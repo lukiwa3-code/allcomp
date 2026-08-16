@@ -193,7 +193,7 @@ public class MainActivity extends Activity {
             "const price=s=>{s=n(s);let m=s.match(/(\\d{1,3}(?:[ .]\\d{3})*|\\d+)\\s*[,.]\\s*(\\d{2})\\s*zł/i);if(m)return Number(m[1].replace(/[ .]/g,'')+'.'+m[2]);m=s.match(/(\\d{1,3}(?:[ .]\\d{3})*|\\d+)\\s*zł/i);return m?Number(m[1].replace(/[ .]/g,'')):null};" +
             "const seen=new Set(),out=[],expected=location.pathname.replace('/oferty-produktu/','/produkt/');let own=null,maxPage=1;" +
             "document.querySelectorAll('a[href*=\\\"p=\\\"]').forEach(a=>{let p=Number(new URL(a.href).searchParams.get('p'));if(p>maxPage)maxPage=p});" +
-            "document.querySelectorAll('a[href*=\\\"offerId=\\\"]').forEach(a=>{let href=a.href;if(new URL(href).pathname!==expected||seen.has(href))return;let c=a.closest('article');if(!c)return;let p=price(c.textContent),text=n(c.textContent),compact=text.replace(/\\s+/g,'').toLowerCase();if(p==null)return;seen.add(href);out.push({price:p});if(compact.includes('|lukiwapoleca')||compact.includes('odlukiwapoleca'))own=p});" +
+            "document.querySelectorAll('a[href*=\\\"offerId=\\\"]').forEach(a=>{let href=a.href;if(new URL(href).pathname!==expected||seen.has(href))return;let c=a.closest('article');if(!c)return;let p=price(c.textContent),compact=(c.textContent||'').replace(/\\s+/g,'').toLowerCase();if(p==null)return;seen.add(href);out.push({price:p});if(compact.includes('lukiwa'))own=p});" +
             "out.sort((a,b)=>a.price-b.price);AndroidOffers.onOffers(JSON.stringify({page:Number(new URL(location.href).searchParams.get('p')||1),maxPage:maxPage,prices:out.slice(0,2),ownPrice:own}));})()";
         webView.evaluateJavascript(js, null);
     }
@@ -233,7 +233,9 @@ public class MainActivity extends Activity {
                         secondPrice = prices.getJSONObject(1).getDouble("price");
                     }
                     if (!result.isNull("ownPrice")) ownPrice = result.getDouble("ownPrice");
-                    boolean pageNotReady = prices.length() == 0 || (currentPage == 1 && (firstPrice == null || secondPrice == null));
+                    boolean pageNotReady = prices.length() == 0 ||
+                        (currentPage == 1 && (firstPrice == null || secondPrice == null)) ||
+                        ownPrice == null;
                     if (pageNotReady && extractionAttempts < 4) {
                         extractionAttempts++;
                         final int retryPage = currentPage;
