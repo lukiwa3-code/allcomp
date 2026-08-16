@@ -23,8 +23,10 @@
             android:textColor="#FFFFFF" android:backgroundTint="@color/ink" />
     </LinearLayout>
 
-    <TextView android:id="@+id/setList" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:padding="12dp" android:text="Zapisane zestawy: brak" android:textColor="@color/ink" />
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:paddingHorizontal="12dp" android:paddingTop="10dp" android:text="Zapisane zestawy — dotknij, aby zaznaczyć do usunięcia:" android:textColor="@color/ink" />
+    <GridLayout android:id="@+id/setButtons" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:columnCount="3" android:padding="8dp" />
     <TextView android:id="@+id/status" android:layout_width="match_parent" android:layout_height="wrap_content"
         android:paddingHorizontal="12dp" android:paddingBottom="8dp" android:text="Dodaj numery zestawów." android:textColor="@color/lego_red" />
 

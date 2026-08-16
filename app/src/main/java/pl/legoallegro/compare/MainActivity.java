@@ -14,13 +14,16 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.GridLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ToggleButton;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Locale;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -33,11 +36,13 @@ public class MainActivity extends Activity {
 
     private WebView webView;
     private EditText setNumber;
-    private TextView setList, status, batchResults;
+    private TextView status, batchResults;
+    private GridLayout setButtons;
     private Button addButton, removeButton, checkAllButton;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final NumberFormat currency = NumberFormat.getCurrencyInstance(new Locale("pl", "PL"));
     private final ArrayList<String> savedSets = new ArrayList<>();
+    private final HashSet<String> selectedSets = new HashSet<>();
     private ArrayList<String> batchQueue = new ArrayList<>();
     private Stage stage = Stage.IDLE;
     private int queueIndex = 0, currentPage = 1, maxPage = 1;
@@ -51,7 +56,7 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
         webView = findViewById(R.id.webView);
         setNumber = findViewById(R.id.setNumber);
-        setList = findViewById(R.id.setList);
+        setButtons = findViewById(R.id.setButtons);
         status = findViewById(R.id.status);
         batchResults = findViewById(R.id.batchResults);
         addButton = findViewById(R.id.addButton);
@@ -106,9 +111,14 @@ public class MainActivity extends Activity {
     }
 
     private void removeSet() {
-        String number = enteredNumber();
-        if (!validNumber(number)) return;
-        savedSets.remove(number);
+        if (!selectedSets.isEmpty()) {
+            savedSets.removeAll(selectedSets);
+            selectedSets.clear();
+        } else {
+            String number = enteredNumber();
+            if (!validNumber(number)) return;
+            savedSets.remove(number);
+        }
         saveSets();
         renderSavedSets();
         setNumber.setText("");
@@ -134,7 +144,30 @@ public class MainActivity extends Activity {
     }
 
     private void renderSavedSets() {
-        setList.setText(savedSets.isEmpty() ? "Zapisane zestawy: brak" : "Zapisane zestawy: " + String.join(", ", savedSets));
+        setButtons.removeAllViews();
+        selectedSets.retainAll(savedSets);
+        if (savedSets.isEmpty()) {
+            TextView empty = new TextView(this);
+            empty.setText("Brak zapisanych zestawów");
+            empty.setPadding(12, 8, 12, 8);
+            setButtons.addView(empty);
+            return;
+        }
+        for (String number : savedSets) {
+            ToggleButton button = new ToggleButton(this);
+            button.setTextOn(number);
+            button.setTextOff(number);
+            button.setText(number);
+            button.setChecked(selectedSets.contains(number));
+            button.setOnCheckedChangeListener((view, checked) -> {
+                if (checked) selectedSets.add(number); else selectedSets.remove(number);
+            });
+            GridLayout.LayoutParams params = new GridLayout.LayoutParams();
+            params.width = 0;
+            params.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
+            params.setMargins(4, 4, 4, 4);
+            setButtons.addView(button, params);
+        }
     }
 
     private void checkAll() {
@@ -190,7 +223,7 @@ public class MainActivity extends Activity {
         if (stage != Stage.READ_OFFERS || expectedPage != currentPage) return;
         String js = "javascript:(()=>{" +
             "const n=s=>(s||'').replace(/\\s+/g,' ').trim();" +
-            "const price=s=>{s=n(s);let m=s.match(/(\\d{1,3}(?:[ .]\\d{3})*|\\d+)\\s*[,.]\\s*(\\d{2})\\s*zł/i);if(m)return Number(m[1].replace(/[ .]/g,'')+'.'+m[2]);m=s.match(/(\\d{1,3}(?:[ .]\\d{3})*|\\d+)\\s*zł/i);return m?Number(m[1].replace(/[ .]/g,'')):null};" +
+            "const price=s=>{s=n(s);let marker=s.toLowerCase().indexOf('cena z 30 dni');if(marker>=0)s=s.slice(marker+13);let m=s.match(/(\\d{1,3}(?:[ .]\\d{3})*|\\d+)\\s*[,.]\\s*(\\d{2})\\s*zł/i);if(m)return Number(m[1].replace(/[ .]/g,'')+'.'+m[2]);m=s.match(/(\\d{1,3}(?:[ .]\\d{3})*|\\d+)\\s*zł/i);return m?Number(m[1].replace(/[ .]/g,'')):null};" +
             "const seen=new Set(),out=[],expected=location.pathname.replace('/oferty-produktu/','/produkt/');let own=null,maxPage=1;" +
             "document.querySelectorAll('a[href*=\\\"p=\\\"]').forEach(a=>{let p=Number(new URL(a.href).searchParams.get('p'));if(p>maxPage)maxPage=p});" +
             "document.querySelectorAll('a[href*=\\\"offerId=\\\"]').forEach(a=>{let href=a.href;if(new URL(href).pathname!==expected||seen.has(href))return;let c=a.closest('article');if(!c)return;let p=price(c.textContent),compact=(c.textContent||'').replace(/\\s+/g,'').toLowerCase();if(p==null)return;seen.add(href);out.push({price:p});if(compact.includes('lukiwa'))own=p});" +

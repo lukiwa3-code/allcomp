@@ -9,7 +9,9 @@
     .reduce((max, match) => Math.max(max, Number(match[1].replace(/\s/g, "")) || 0), 0);
 
   function parsePrice(value) {
-    const text = normalize(value);
+    let text = normalize(value);
+    const historicalMarker = text.toLowerCase().indexOf("cena z 30 dni");
+    if (historicalMarker >= 0) text = text.slice(historicalMarker + "cena z 30 dni".length);
     let match = text.match(/(\d{1,3}(?:[ .]\d{3})*|\d+)\s*[,.]\s*(\d{2})\s*zł/i);
     if (match) return Number(`${match[1].replace(/[ .]/g, "")}.${match[2]}`);
     match = text.match(/(\d{1,3}(?:[ .]\d{3})*|\d+)\s+(\d{2})\s*zł/i);

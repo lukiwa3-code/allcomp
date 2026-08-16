@@ -14,6 +14,9 @@ Aplikacja Android przechowuje listę obserwowanych numerów w wewnętrznym pliku
 `sets.txt`. Numery można dodawać i usuwać na ekranie, a następnie sprawdzić całą
 listę jednym przyciskiem. Wynik zawiera również cenę oferty sprzedawcy `lukiwa`;
 aplikacja przegląda w tym celu kolejne strony ofert produktu.
+Zapisane numery są wyświetlane jako przełączniki — można zaznaczyć kilka pozycji
+i usunąć je jednocześnie. Parser promocji pomija historyczną „cenę z 30 dni” i
+porównuje aktualną cenę sprzedaży.
 Pomiędzy rozpoczęciem sprawdzania kolejnych numerów obowiązuje stała przerwa
 10 sekund, która ogranicza częstotliwość zapytań.
 
