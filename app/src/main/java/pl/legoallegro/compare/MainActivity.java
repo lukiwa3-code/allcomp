@@ -90,10 +90,8 @@ public class MainActivity extends Activity {
             "const n=s=>(s||'').replace(/\\s+/g,' ').trim();" +
             "const count=s=>[...n(s).matchAll(/(\\d[\\d\\s]*)\\s+ofert(?:a|y)?\\b/gi)].reduce((m,x)=>Math.max(m,Number(x[1].replace(/\\s/g,''))||0),0);" +
             "const out=[],seen=new Set();" +
-            "document.querySelectorAll('article,[data-role=product],[data-box-name*=product]').forEach(c=>{" +
-            "let k=count(c.innerText),a=c.querySelector('a[href*=\\\"/produkt/\\\"],a[href*=\\\"product.id\\\"],a[href*=\\\"productId\\\"]');" +
-            "if(!k||!a||seen.has(a.href))return;seen.add(a.href);let h=c.querySelector('h2,h3,[role=heading]');out.push({url:a.href,count:k,title:n(h?.textContent||a.textContent)})});" +
-            "document.querySelectorAll('a').forEach(a=>{let k=count(a.innerText);if(!k||!/\\/produkt\\/|product\\.id|productId/i.test(a.href)||seen.has(a.href))return;out.push({url:a.href,count:k,title:n(a.textContent)})});" +
+            "document.querySelectorAll('a[href]').forEach(a=>{let k=count(a.innerText);if(!k||seen.has(a.href))return;seen.add(a.href);out.push({url:a.href,count:k,title:n(a.textContent)})});" +
+            "document.querySelectorAll('article,[data-role=product],[data-box-name]').forEach(c=>{let k=count(c.innerText);if(!k)return;let a=[...c.querySelectorAll('a[href]')].find(x=>count(x.innerText)>0)||c.querySelector('a[href*=\\\"/produkt/\\\"],a[href*=\\\"product.id\\\"],a[href*=\\\"productId\\\"]');if(!a||seen.has(a.href))return;seen.add(a.href);let h=c.querySelector('h2,h3,[role=heading]');out.push({url:a.href,count:k,title:n(h?.textContent||a.textContent)})});" +
             "out.sort((a,b)=>b.count-a.count);if(out[0])AndroidOffers.onProduct(JSON.stringify(out[0]));else AndroidOffers.onProduct('{}');})()";
         webView.evaluateJavascript(js, null);
     }
@@ -105,8 +103,8 @@ public class MainActivity extends Activity {
             "const seen=new Set(),out=[];" +
             "document.querySelectorAll('a[href*=\"/oferta/\"]').forEach(a=>{" +
             "let href=a.href.split('?')[0];if(seen.has(href))return;" +
-            "let c=a.closest('article')||a.closest('[data-role=offer]')||a.parentElement?.parentElement;if(!c)return;" +
-            "let p=price(c.innerText),h=c.querySelector('h2,h3,[role=heading]'),t=n(h?.textContent||a.textContent);" +
+            "let c=a.closest('article')||a.closest('[data-role=offer]'),p=null,x=a;for(let i=0;!c&&i<7&&x;i++,x=x.parentElement){if(price(x.innerText)!=null)c=x}if(!c)return;" +
+            "p=price(c.innerText);let h=c.querySelector('h2,h3,[role=heading]'),t=n(h?.textContent||a.textContent);" +
             "if(p==null||t.length<4)return;seen.add(href);out.push({title:t,price:p,url:href})});" +
             "out.sort((a,b)=>a.price-b.price);AndroidOffers.onOffers(JSON.stringify(out.slice(0,2)));})()";
         webView.evaluateJavascript(js, null);
@@ -157,7 +155,7 @@ public class MainActivity extends Activity {
     }
 
     private void bindOffer(TextView view, String label, JSONObject offer) throws Exception {
-        String text = label + "\n" + offer.getString("title") + "\n" + currency.format(offer.getDouble("price"));
+        String text = label + "\n" + currency.format(offer.getDouble("price"));
         SpannableString linked = new SpannableString(text);
         linked.setSpan(new UnderlineSpan(), label.length() + 1, text.length(), 0);
         view.setText(linked);

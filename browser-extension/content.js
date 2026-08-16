@@ -15,21 +15,22 @@
 
   function findProductWithMostOffers() {
     const candidates = [], seen = new Set();
+    for (const link of document.querySelectorAll("a[href]")) {
+      const count = offerCount(link.innerText);
+      if (!count || seen.has(link.href)) continue;
+      seen.add(link.href);
+      candidates.push({ href: link.href, count, title: normalize(link.textContent) });
+    }
     for (const container of document.querySelectorAll("article, [data-role=product], [data-box-name*=product]")) {
       const count = offerCount(container.innerText);
-      const link = container.querySelector('a[href*="/produkt/"], a[href*="product.id"], a[href*="productId"]');
+      const link = [...container.querySelectorAll("a[href]")].find((item) => offerCount(item.innerText)) ||
+        container.querySelector('a[href*="/produkt/"], a[href*="product.id"], a[href*="productId"]');
       if (!count || !link) continue;
       const href = new URL(link.href, location.href).href;
       if (seen.has(href)) continue;
       seen.add(href);
       const heading = container.querySelector("h2, h3, [role=heading]");
       candidates.push({ href, count, title: normalize(heading?.textContent || link.textContent) });
-    }
-    for (const link of document.querySelectorAll("a")) {
-      const count = offerCount(link.innerText);
-      if (!count || !/\/produkt\/|product\.id|productId/i.test(link.href)) continue;
-      const href = new URL(link.href, location.href).href;
-      if (!seen.has(href)) candidates.push({ href, count, title: normalize(link.textContent) });
     }
     return candidates.sort((a, b) => b.count - a.count)[0] || null;
   }
@@ -39,7 +40,10 @@
     for (const link of document.querySelectorAll('a[href*="/oferta/"]')) {
       const href = new URL(link.href, location.href).href.split("?")[0];
       if (seen.has(href)) continue;
-      const card = link.closest("article") || link.closest('[data-role="offer"]') || link.parentElement?.parentElement;
+      let card = link.closest("article") || link.closest('[data-role="offer"]');
+      for (let node = link, depth = 0; !card && node && depth < 7; node = node.parentElement, depth++) {
+        if (parsePrice(node.innerText) !== null) card = node;
+      }
       if (!card) continue;
       const price = parsePrice(card.innerText);
       const heading = card.querySelector("h2, h3, [role=heading]");
