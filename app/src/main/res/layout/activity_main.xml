@@ -1,40 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent"
-    android:orientation="vertical" android:background="@color/paper">
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent">
 
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="vertical" android:padding="18dp" android:background="@color/lego_yellow">
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="LEGO · PORÓWNANIE CEN" android:textColor="@color/ink"
-            android:textStyle="bold" android:textSize="22sp" />
-        <EditText android:id="@+id/setNumber" android:layout_width="match_parent" android:layout_height="52dp"
-            android:layout_marginTop="10dp" android:background="#FFFFFFFF" android:hint="Numer zestawu, np. 76442"
-            android:inputType="number" android:maxLength="8" android:paddingHorizontal="14dp" />
+    <WebView android:id="@+id/webView" android:layout_width="match_parent" android:layout_height="match_parent"
+        android:alpha="0" android:importantForAccessibility="no" />
+
+    <ScrollView android:layout_width="match_parent" android:layout_height="match_parent"
+        android:fillViewport="true" android:background="@color/paper">
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="8dp" android:orientation="horizontal">
-            <Button android:id="@+id/addButton" android:layout_width="0dp" android:layout_height="48dp"
-                android:layout_weight="1" android:text="Dodaj" android:textColor="#FFFFFF" android:backgroundTint="@color/lego_red" />
-            <Button android:id="@+id/removeButton" android:layout_width="0dp" android:layout_height="48dp"
-                android:layout_weight="1" android:layout_marginStart="8dp" android:text="Usuń" />
+            android:orientation="vertical" android:background="@color/paper" android:paddingBottom="20dp">
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="vertical" android:padding="18dp" android:background="@color/lego_yellow">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="LEGO · PORÓWNANIE CEN" android:textColor="@color/ink"
+                    android:textStyle="bold" android:textSize="22sp" />
+                <EditText android:id="@+id/setNumber" android:layout_width="match_parent" android:layout_height="52dp"
+                    android:layout_marginTop="10dp" android:background="#FFFFFFFF" android:hint="Numer zestawu, np. 76442"
+                    android:inputType="number" android:maxLength="8" android:paddingHorizontal="14dp" />
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp" android:orientation="horizontal">
+                    <Button android:id="@+id/addButton" android:layout_width="0dp" android:layout_height="48dp"
+                        android:layout_weight="1" android:text="Dodaj" android:textColor="#FFFFFF" android:backgroundTint="@color/lego_red" />
+                    <Button android:id="@+id/removeButton" android:layout_width="0dp" android:layout_height="48dp"
+                        android:layout_weight="1" android:layout_marginStart="8dp" android:text="Usuń" />
+                </LinearLayout>
+                <Button android:id="@+id/checkAllButton" android:layout_width="match_parent" android:layout_height="50dp"
+                    android:layout_marginTop="8dp" android:text="Sprawdź wszystkie" android:textStyle="bold"
+                    android:textColor="#FFFFFF" android:backgroundTint="@color/ink" />
+            </LinearLayout>
+
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:paddingHorizontal="12dp" android:paddingTop="10dp"
+                android:text="Zapisane zestawy — dotknij, aby zaznaczyć do usunięcia:" android:textColor="@color/ink" />
+            <GridLayout android:id="@+id/setButtons" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:columnCount="3" android:padding="8dp" />
+            <TextView android:id="@+id/status" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:paddingHorizontal="12dp" android:paddingBottom="8dp" android:text="Dodaj numery zestawów." android:textColor="@color/lego_red" />
+            <TextView android:id="@+id/batchResults" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:padding="14dp" android:textColor="@color/ink" android:textSize="16sp" android:lineSpacingExtra="3dp" />
         </LinearLayout>
-        <Button android:id="@+id/checkAllButton" android:layout_width="match_parent" android:layout_height="50dp"
-            android:layout_marginTop="8dp" android:text="Sprawdź wszystkie" android:textStyle="bold"
-            android:textColor="#FFFFFF" android:backgroundTint="@color/ink" />
-    </LinearLayout>
-
-    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:paddingHorizontal="12dp" android:paddingTop="10dp" android:text="Zapisane zestawy — dotknij, aby zaznaczyć do usunięcia:" android:textColor="@color/ink" />
-    <GridLayout android:id="@+id/setButtons" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:columnCount="3" android:padding="8dp" />
-    <TextView android:id="@+id/status" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:paddingHorizontal="12dp" android:paddingBottom="8dp" android:text="Dodaj numery zestawów." android:textColor="@color/lego_red" />
-
-    <ScrollView android:layout_width="match_parent" android:layout_height="wrap_content" android:maxHeight="360dp">
-        <TextView android:id="@+id/batchResults" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:padding="14dp" android:textColor="@color/ink" android:textSize="16sp" android:lineSpacingExtra="3dp" />
     </ScrollView>
-
-    <WebView android:id="@+id/webView" android:layout_width="match_parent" android:layout_height="0dp"
-        android:layout_weight="1" android:alpha="0" android:importantForAccessibility="no" />
-</LinearLayout>
+</FrameLayout>
