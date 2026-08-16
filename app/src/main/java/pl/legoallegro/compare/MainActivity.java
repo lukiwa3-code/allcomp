@@ -50,7 +50,6 @@ public class MainActivity extends Activity {
         webView.setBackgroundColor(Color.WHITE);
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setDomStorageEnabled(true);
-        webView.getSettings().setUserAgentString(webView.getSettings().getUserAgentString() + " LegoPriceCompare/1.0");
         webView.addJavascriptInterface(new OfferBridge(), "AndroidOffers");
         webView.setWebChromeClient(new WebChromeClient());
         webView.setWebViewClient(new WebViewClient() {
@@ -92,8 +91,9 @@ public class MainActivity extends Activity {
             "const n=s=>(s||'').replace(/\\s+/g,' ').trim();" +
             "const count=s=>[...n(s).matchAll(/(\\d[\\d\\s]*)\\s+ofert(?:a|y)?\\b/gi)].reduce((m,x)=>Math.max(m,Number(x[1].replace(/\\s/g,''))||0),0);" +
             "const out=[],seen=new Set();" +
-            "document.querySelectorAll('a[href]').forEach(a=>{let k=count(a.innerText);if(!k||seen.has(a.href))return;seen.add(a.href);out.push({url:a.href,count:k,title:n(a.textContent)})});" +
-            "document.querySelectorAll('article,[data-role=product],[data-box-name]').forEach(c=>{let k=count(c.innerText);if(!k)return;let a=[...c.querySelectorAll('a[href]')].find(x=>count(x.innerText)>0)||c.querySelector('a[href*=\\\"/produkt/\\\"],a[href*=\\\"product.id\\\"],a[href*=\\\"productId\\\"]');if(!a||seen.has(a.href))return;seen.add(a.href);let h=c.querySelector('h2,h3,[role=heading]');out.push({url:a.href,count:k,title:n(h?.textContent||a.textContent)})});" +
+            "[...document.querySelectorAll('button')].find(b=>/nie zgadzam się/i.test(b.textContent||''))?.click();" +
+            "document.querySelectorAll('a[href*=\\\"/oferty-produktu/\\\"]').forEach(a=>{let k=count(a.textContent);if(!k||seen.has(a.href))return;seen.add(a.href);out.push({url:a.href,count:k,title:n(a.textContent)})});" +
+            "document.querySelectorAll('article,[data-role=product],[data-box-name]').forEach(c=>{let k=count(c.textContent);if(!k)return;let a=c.querySelector('a[href*=\\\"/oferty-produktu/\\\"]');if(!a||seen.has(a.href))return;seen.add(a.href);let h=c.querySelector('h2,h3,[role=heading]');out.push({url:a.href,count:k,title:n(h?.textContent||a.textContent)})});" +
             "out.sort((a,b)=>b.count-a.count);if(out[0])AndroidOffers.onProduct(JSON.stringify(out[0]));else AndroidOffers.onProduct('{}');})()";
         webView.evaluateJavascript(js, null);
     }
@@ -103,11 +103,12 @@ public class MainActivity extends Activity {
         String js = "javascript:(()=>{" +
             "const n=s=>(s||'').replace(/\\s+/g,' ').trim();" +
             "const price=s=>{s=n(s);let m=s.match(/(\\d{1,3}(?:[ .]\\d{3})*|\\d+)\\s*[,.]\\s*(\\d{2})\\s*zł/i);if(m)return Number(m[1].replace(/[ .]/g,'')+'.'+m[2]);m=s.match(/(\\d{1,3}(?:[ .]\\d{3})*|\\d+)\\s+(\\d{2})\\s*zł/i);if(m)return Number(m[1].replace(/[ .]/g,'')+'.'+m[2]);m=s.match(/(\\d{1,3}(?:[ .]\\d{3})*|\\d+)\\s*zł/i);return m?Number(m[1].replace(/[ .]/g,'')):null};" +
-            "const seen=new Set(),out=[];" +
-            "document.querySelectorAll('a[href*=\"/oferta/\"]').forEach(a=>{" +
-            "let href=a.href.split('?')[0];if(seen.has(href))return;" +
-            "let c=a.closest('article')||a.closest('[data-role=offer]'),p=null,x=a;for(let i=0;!c&&i<7&&x;i++,x=x.parentElement){if(price(x.innerText)!=null)c=x}if(!c)return;" +
-            "p=price(c.innerText);let h=c.querySelector('h2,h3,[role=heading]'),t=n(h?.textContent||a.textContent);" +
+            "const seen=new Set(),out=[],expected=location.pathname.replace('/oferty-produktu/','/produkt/');" +
+            "[...document.querySelectorAll('button')].find(b=>/nie zgadzam się/i.test(b.textContent||''))?.click();" +
+            "document.querySelectorAll('a[href*=\"/oferta/\"],a[href*=\"offerId=\"]').forEach(a=>{" +
+            "let href=a.href;if(href.includes('offerId=')&&new URL(href).pathname!==expected)return;if(seen.has(href))return;" +
+            "let c=a.closest('article')||a.closest('[data-role=offer]'),p=null,x=a;for(let i=0;!c&&i<7&&x;i++,x=x.parentElement){if(price(x.textContent)!=null)c=x}if(!c)return;" +
+            "p=price(c.textContent);let h=c.querySelector('h2,h3,[role=heading]'),t=n(h?.textContent||a.textContent||'Oferta Allegro');" +
             "if(p==null||t.length<4)return;seen.add(href);out.push({title:t,price:p,url:href})});" +
             "out.sort((a,b)=>a.price-b.price);AndroidOffers.onOffers(JSON.stringify(out.slice(0,2)));})()";
         webView.evaluateJavascript(js, null);

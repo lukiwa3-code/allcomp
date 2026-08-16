@@ -20,16 +20,15 @@
 
   function findProductWithMostOffers() {
     const candidates = [], seen = new Set();
-    for (const link of document.querySelectorAll("a[href]")) {
-      const count = offerCount(link.innerText);
+    for (const link of document.querySelectorAll('a[href*="/oferty-produktu/"]')) {
+      const count = offerCount(link.textContent);
       if (!count || seen.has(link.href)) continue;
       seen.add(link.href);
       candidates.push({ href: link.href, count, title: normalize(link.textContent) });
     }
     for (const container of document.querySelectorAll("article, [data-role=product], [data-box-name*=product]")) {
-      const count = offerCount(container.innerText);
-      const link = [...container.querySelectorAll("a[href]")].find((item) => offerCount(item.innerText)) ||
-        container.querySelector('a[href*="/produkt/"], a[href*="product.id"], a[href*="productId"]');
+      const count = offerCount(container.textContent);
+      const link = container.querySelector('a[href*="/oferty-produktu/"]');
       if (!count || !link) continue;
       const href = new URL(link.href, location.href).href;
       if (seen.has(href)) continue;
@@ -42,15 +41,17 @@
 
   function findOffers() {
     const seen = new Set(), offers = [];
-    for (const link of document.querySelectorAll('a[href*="/oferta/"]')) {
-      const href = new URL(link.href, location.href).href.split("?")[0];
+    const expectedPath = location.pathname.replace("/oferty-produktu/", "/produkt/");
+    for (const link of document.querySelectorAll('a[href*="/oferta/"], a[href*="offerId="]')) {
+      const href = new URL(link.href, location.href).href;
+      if (href.includes("offerId=") && new URL(href).pathname !== expectedPath) continue;
       if (seen.has(href)) continue;
       let card = link.closest("article") || link.closest('[data-role="offer"]');
       for (let node = link, depth = 0; !card && node && depth < 7; node = node.parentElement, depth++) {
         if (parsePrice(node.innerText) !== null) card = node;
       }
       if (!card) continue;
-      const price = parsePrice(card.innerText);
+      const price = parsePrice(card.textContent);
       const heading = card.querySelector("h2, h3, [role=heading]");
       const title = normalize(heading?.textContent || link.textContent);
       if (price === null || title.length < 4) continue;
@@ -114,6 +115,7 @@
   const runStage = () => sessionStorage.getItem("lap_stage") === "product" ? chooseProduct() : renderOffers();
   panel.querySelector("#lap-refresh").addEventListener("click", runStage);
   panel.querySelector("#lap-collapse").addEventListener("click", () => panel.classList.toggle("lap-collapsed"));
+  [...document.querySelectorAll("button")].find((button) => /nie zgadzam się/i.test(button.textContent || ""))?.click();
   if (sessionStorage.getItem("lap_stage") === "product") results.textContent = "Szukam produktu z największą liczbą ofert…";
   setTimeout(runStage, 1500);
   setTimeout(runStage, 4000);
