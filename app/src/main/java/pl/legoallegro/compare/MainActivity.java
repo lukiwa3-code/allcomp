@@ -362,11 +362,12 @@ public class MainActivity extends Activity {
         String quotedNumber = JSONObject.quote(currentNumber);
         String js = "javascript:(()=>{" +
             "const n=s=>(s||'').replace(/\\s+/g,' ').trim();" +
-            "const count=s=>[...n(s).matchAll(/(\\d[\\d\\s]*)\\s+ofert(?:a|y)?\\b/gi)].reduce((m,x)=>Math.max(m,Number(x[1].replace(/\\s/g,''))||0),0);" +
-            "const out=[],seen=new Set(),number=" + quotedNumber + ";" +
+            "const count=s=>[...n(s).matchAll(/(\\d[\\d\\s.]*)\\s*ofert(?:a|y)?/gi)].reduce((m,x)=>Math.max(m,Number(x[1].replace(/[\\s.]/g,''))||0),0);" +
+            "const cardOf=a=>{let article=a.closest('article');if(article)return article;let e=a;for(let i=0;e&&i<10;i++,e=e.parentElement){let t=n(e.textContent);if(/numer\\s+produktu/i.test(t)&&/ofert/i.test(t))return e}return a.parentElement};" +
+            "const byUrl=new Map(),number=" + quotedNumber + ",boundary=new RegExp('(^|\\\\D)'+number+'(\\\\D|$)'),numberField=new RegExp('numer\\\\s+produktu\\\\s*:?\\\\s*'+number+'(\\\\D|$)','i');" +
             "[...document.querySelectorAll('button')].find(b=>/nie zgadzam się/i.test(b.textContent||''))?.click();" +
-            "document.querySelectorAll('a[href*=\\\"/oferty-produktu/\\\"]').forEach(a=>{let u=new URL(a.href),card=a.closest('article'),text=n(card?.textContent),exact=new RegExp('(^|\\\\D)'+number+'(\\\\D|$)').test(u.pathname)||new RegExp('numer produktu\\\\s*'+number+'(\\\\D|$)','i').test(text),k=count(a.textContent);if(!exact||!k||seen.has(a.href))return;seen.add(a.href);out.push({url:a.href,count:k,title:n(card?.querySelector('h2,h3')?.textContent||a.textContent)})});" +
-            "out.sort((a,b)=>b.count-a.count);AndroidOffers.onProduct(JSON.stringify(out[0]||{}));})()";
+            "document.querySelectorAll('a[href*=\\\"/oferty-produktu/\\\"],a[href*=\\\"/produkt/\\\"]').forEach(a=>{let source=new URL(a.href),card=cardOf(a),text=n(card&&card.textContent);if(!boundary.test(source.pathname)&&!numberField.test(text))return;let offer=card&&card.querySelector('a[href*=\\\"/oferty-produktu/\\\"]'),target=new URL(offer?offer.href:source.href);if(target.pathname.includes('/produkt/'))target.pathname=target.pathname.replace('/produkt/','/oferty-produktu/');let url=target.origin+target.pathname,k=Math.max(count(text),count(a.textContent),count(offer&&offer.textContent)),old=byUrl.get(url),heading=card&&card.querySelector('h2,h3'),title=n((heading&&heading.textContent)||a.textContent);if(!old||k>old.count)byUrl.set(url,{url:url,count:k,title:title})});" +
+            "const out=[...byUrl.values()].sort((a,b)=>b.count-a.count);AndroidOffers.onProduct(JSON.stringify(out[0]||{debug:{offerLinks:document.querySelectorAll('a[href*=\\\"/oferty-produktu/\\\"]').length,productLinks:document.querySelectorAll('a[href*=\\\"/produkt/\\\"]').length,articles:document.querySelectorAll('article').length}}));})()";
         webView.evaluateJavascript(js, null);
     }
 

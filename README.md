@@ -31,6 +31,9 @@ sprawdzanie kolejnych produktów rozpoczyna się co 2 sekundy. Zakładka zapisan
 zestawów nadal zachowuje 10-sekundową przerwę.
 Przy rozpoczęciu kolejnego produktu aplikacja usuwa opóźnione odczyty poprzedniej
 strony i wybiera wyłącznie kartę z dokładnie pasującym numerem zestawu.
+Odczyt liczby ofert obsługuje również mobilny układ Allegro, w którym tekst
+„oferty” bywa sklejony z następnym elementem karty. Jeśli bezpośredni link do
+wszystkich ofert nie jest widoczny, aplikacja tworzy go z linku produktu.
 
 ## Android APK
 
