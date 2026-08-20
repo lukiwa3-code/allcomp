@@ -52,7 +52,8 @@ public class MainActivity extends Activity {
     private static final String SETS_FILE = "sets.txt";
     private static final String OWN_SELLER = "lukiwa";
     private static final String LEGO_DEALS_URL = "https://www.lego.com/pl-pl/categories/sales-and-deals";
-    private static final long SET_DELAY_MS = 10_000L;
+    private static final long SAVED_SET_DELAY_MS = 10_000L;
+    private static final long LEGO_DEALS_DELAY_MS = 2_000L;
 
     private WebView webView;
     private EditText setNumber;
@@ -589,8 +590,10 @@ public class MainActivity extends Activity {
         stage = Stage.IDLE;
         queueIndex++;
         if (queueIndex < batchQueue.size()) {
-            setProgressStatus((mode == Mode.LEGO_DEALS ? "Następny produkt" : "Następny zestaw") + " za 10 sekund…");
-            handler.postDelayed(this::startNextSet, SET_DELAY_MS);
+            boolean dealsMode = mode == Mode.LEGO_DEALS;
+            long delay = dealsMode ? LEGO_DEALS_DELAY_MS : SAVED_SET_DELAY_MS;
+            setProgressStatus(dealsMode ? "Następny produkt za 2 sekundy…" : "Następny zestaw za 10 sekund…");
+            handler.postDelayed(this::startNextSet, delay);
         } else {
             startNextSet();
         }

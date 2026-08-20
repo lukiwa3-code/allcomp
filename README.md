@@ -27,7 +27,8 @@ Druga zakładka **Promocje LEGO** pobiera wszystkie strony aktualnej kategorii
 „Oferty i wyprzedaż” z polskiego LEGO.com. Dla każdego widocznego tam produktu
 odczytuje numer i aktualną cenę promocyjną, a następnie pokazuje ją obok
 najtańszej rozpoznanej ceny nowej oferty na Allegro. Również w tym trybie
-sprawdzanie kolejnych produktów rozpoczyna się co 10 sekund.
+sprawdzanie kolejnych produktów rozpoczyna się co 2 sekundy. Zakładka zapisanych
+zestawów nadal zachowuje 10-sekundową przerwę.
 
 ## Android APK
 
