@@ -1,3 +1,52 @@
-# AllComp
+# AllComp — porównywarka LEGO na Allegro
 
-Narzędzia do porównywania cen ofert internetowych.
+Repozytorium zawiera dwa warianty narzędzia działającego bez Allegro API:
+
+- aplikację Android w katalogu `app`,
+- rozszerzenie Chrome/Edge w katalogu `browser-extension`.
+
+Oba warianty wyszukują nowe zestawy LEGO, wybierają kartę produktu z największą
+liczbą ofert, przechodzą do ofert dokładnie tego produktu, a następnie zwracają
+najtańszą i drugą najtańszą cenę. Cena nie obejmuje dostawy ani indywidualnych
+korzyści Allegro Smart!.
+
+Aplikacja Android przechowuje listę obserwowanych numerów w wewnętrznym pliku
+`sets.txt`. Numery można dodawać i usuwać na ekranie, a następnie sprawdzić całą
+listę jednym przyciskiem. Wynik zawiera również cenę oferty sprzedawcy `lukiwa`;
+aplikacja przegląda w tym celu kolejne strony ofert produktu.
+Zapisane numery są wyświetlane jako przełączniki — można zaznaczyć kilka pozycji
+i usunąć je jednocześnie. Parser promocji pomija historyczną „cenę z 30 dni” i
+porównuje aktualną cenę sprzedaży.
+Zaznaczone numery są czerwone, a odznaczone jasnoszare. Cena własna jest
+sprawdzana dodatkowo na stronie ofert sprzedawcy `lukiwa`, z kontrolą zgodności
+identyfikatora produktu.
+Pomiędzy rozpoczęciem sprawdzania kolejnych numerów obowiązuje stała przerwa
+10 sekund, która ogranicza częstotliwość zapytań.
+
+Druga zakładka **Promocje LEGO** pobiera wszystkie strony aktualnej kategorii
+„Oferty i wyprzedaż” z polskiego LEGO.com. Dla każdego widocznego tam produktu
+odczytuje numer i aktualną cenę promocyjną, a następnie pokazuje ją obok
+najtańszej rozpoznanej ceny nowej oferty na Allegro. Również w tym trybie
+sprawdzanie kolejnych produktów rozpoczyna się co 2 sekundy. Zakładka zapisanych
+zestawów nadal zachowuje 10-sekundową przerwę.
+Przy rozpoczęciu kolejnego produktu aplikacja usuwa opóźnione odczyty poprzedniej
+strony i wybiera wyłącznie kartę z dokładnie pasującym numerem zestawu.
+Odczyt liczby ofert obsługuje również mobilny układ Allegro, w którym tekst
+„oferty” bywa sklejony z następnym elementem karty. Jeśli bezpośredni link do
+wszystkich ofert nie jest widoczny, aplikacja tworzy go z linku produktu.
+
+## Android APK
+
+Workflow `.github/workflows/android.yml` buduje testowe APK automatycznie po
+pushu. Gotowy plik znajduje się w artefakcie `lego-allegro-debug-apk` danego
+uruchomienia GitHub Actions.
+
+## Rozszerzenie przeglądarkowe
+
+Włącz tryb dewelopera na stronie `chrome://extensions` albo `edge://extensions`,
+wybierz **Załaduj rozpakowane** i wskaż katalog `browser-extension`.
+
+## Ograniczenia
+
+Narzędzia analizują aktualną strukturę strony wyników Allegro. Po większej
+zmianie interfejsu selektory ofert mogą wymagać aktualizacji.
