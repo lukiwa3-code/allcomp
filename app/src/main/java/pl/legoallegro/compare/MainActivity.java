@@ -338,6 +338,7 @@ public class MainActivity extends Activity {
             setControlsEnabled(true);
             return;
         }
+        handler.removeCallbacksAndMessages(null);
         currentNumber = batchQueue.get(queueIndex);
         currentPage = 1;
         maxPage = 1;
@@ -358,12 +359,13 @@ public class MainActivity extends Activity {
 
     private void findLargestProduct() {
         if (stage != Stage.FIND_PRODUCT) return;
+        String quotedNumber = JSONObject.quote(currentNumber);
         String js = "javascript:(()=>{" +
             "const n=s=>(s||'').replace(/\\s+/g,' ').trim();" +
             "const count=s=>[...n(s).matchAll(/(\\d[\\d\\s]*)\\s+ofert(?:a|y)?\\b/gi)].reduce((m,x)=>Math.max(m,Number(x[1].replace(/\\s/g,''))||0),0);" +
-            "const out=[],seen=new Set();" +
+            "const out=[],seen=new Set(),number=" + quotedNumber + ";" +
             "[...document.querySelectorAll('button')].find(b=>/nie zgadzam się/i.test(b.textContent||''))?.click();" +
-            "document.querySelectorAll('a[href*=\\\"/oferty-produktu/\\\"]').forEach(a=>{let k=count(a.textContent);if(!k||seen.has(a.href))return;seen.add(a.href);out.push({url:a.href,count:k,title:n(a.textContent)})});" +
+            "document.querySelectorAll('a[href*=\\\"/oferty-produktu/\\\"]').forEach(a=>{let u=new URL(a.href),card=a.closest('article'),text=n(card?.textContent),exact=new RegExp('(^|\\\\D)'+number+'(\\\\D|$)').test(u.pathname)||new RegExp('numer produktu\\\\s*'+number+'(\\\\D|$)','i').test(text),k=count(a.textContent);if(!exact||!k||seen.has(a.href))return;seen.add(a.href);out.push({url:a.href,count:k,title:n(card?.querySelector('h2,h3')?.textContent||a.textContent)})});" +
             "out.sort((a,b)=>b.count-a.count);AndroidOffers.onProduct(JSON.stringify(out[0]||{}));})()";
         webView.evaluateJavascript(js, null);
     }

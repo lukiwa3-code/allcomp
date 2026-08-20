@@ -29,6 +29,8 @@ odczytuje numer i aktualną cenę promocyjną, a następnie pokazuje ją obok
 najtańszej rozpoznanej ceny nowej oferty na Allegro. Również w tym trybie
 sprawdzanie kolejnych produktów rozpoczyna się co 2 sekundy. Zakładka zapisanych
 zestawów nadal zachowuje 10-sekundową przerwę.
+Przy rozpoczęciu kolejnego produktu aplikacja usuwa opóźnione odczyty poprzedniej
+strony i wybiera wyłącznie kartę z dokładnie pasującym numerem zestawu.
 
 ## Android APK
 
