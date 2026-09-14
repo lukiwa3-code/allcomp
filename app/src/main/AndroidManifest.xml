@@ -5,11 +5,11 @@
 
     <application
         android:allowBackup="true"
-        android:label="Allegro Radar v10"
+        android:label="Allegro Radar Classic"
         android:usesCleartextTraffic="false"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity
-            android:name=".RadarMainActivityV10"
+            android:name=".RadarMainActivityV5"
             android:screenOrientation="unspecified"
             android:exported="true">
             <intent-filter>
